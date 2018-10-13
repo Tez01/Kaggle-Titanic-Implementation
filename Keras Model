@@ -80,3 +80,38 @@ def find_parent(x):
                 
 df['Siblings']=df.apply(find_parent,axis=1)
 df
+
+
+input_data=df.loc[0:782,['Embarked']]
+
+
+
+outputs=df.loc[0:782,'Survived']
+
+test_data=df.loc[783:,['Embarked']]
+test_out=df.loc[783:,'Survived']
+
+
+type(input_data)
+len(input_data)
+print(input_data.shape)
+
+from keras.layers import Dense,Activation,BatchNormalization
+
+
+initialzer=k.initializers.he_normal(seed=None)
+model=Sequential([Dense(32,input_shape=(1,),kernel_initializer=initialzer),
+  BatchNormalization(axis=-1,epsilon=1e-8,center=True,scale=True,beta_initializer='zeros',
+gamma_initializer='ones'),Activation('relu'),Dense(20,kernel_regularizer=  regularizers.l1(0.005))
+                  ,BatchNormalization(axis=-1,epsilon=1e-8  ,center=True,scale=True,beta_initializer='zeros',
+gamma_initializer='ones'),Activation('relu'),Dense(1),Activation('sigmoid')])
+
+
+sgd = optimizers.Adagrad(lr=0.01, decay=1e-6, epsilon=1e-8)
+model.compile(optimizer=sgd,loss='binary_crossentropy',metrics=['accuracy'])
+
+
+model.fit(input_data,outputs,epochs=20,batch_size=64)
+
+sco=model.evaluate(test_data,test_out)
+print(sco)
