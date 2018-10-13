@@ -1,0 +1,117 @@
+import keras as k
+import pandas as pd
+import numpy as np
+from keras.models import Sequential
+df=pd.read_csv('train.csv')
+df.loc[0:2]
+df.apply(pd.to_numeric,errors='coerce')
+from keras import optimizers
+from sklearn import preprocessing
+from keras import regularizers
+df.loc[:,'Sex']
+
+
+i=0
+for i in range(len(df)):
+    
+    if df.loc[i,'Sex']=='male':
+        df.loc[i,'Sex']=float(2)
+        
+    else:
+        df.loc[i,'Sex']=float(1)
+
+for i in range(len(df)):
+    if df.loc[i,'Embarked']=='S':
+        df.loc[i,'Embarked']=1
+    if df.loc[i,'Embarked']=='Q':
+        df.loc[i,'Embarked']=float(2)
+    else:
+        df.loc[i,'Embarked']=float(3)
+df.isnull().sum()
+
+df.loc[:,'Age'].fillna(df.loc[:,'Age'].median(),inplace=True)
+df.loc[:,'Pclass'].fillna(df.loc[:,'Pclass'].median(),inplace=True)
+df.loc[:,'SibSp'].fillna(df.loc[:,'SibSp'].median(),inplace=True)
+df.loc[:,'Parch'].fillna(df.loc[:,'Parch'].median(),inplace=True)
+df.loc[:,'Fare'].fillna(df.loc[:,'Fare'].median(),inplace=True)
+df.isnull().sum()
+df.loc[:,'Title']=df.loc[:,'Name'].str.split(',',expand=True)[1].str.split('.',expand=True)[0]
+df.loc[:,['Sex','Embarked']]=pd.get_dummies(df.loc[:,['Sex','Embarked']])
+
+def split(x):
+    return x.split(',')[0]
+df['Surname']=df['Name'].apply(split)
+
+def find_parent(x):
+    if x['SibSp']>0:
+        prob_family=[]
+        for i in range(len(df)):
+            if df.loc[i,'Surname']==x['Surname']:
+                
+                if df.loc[i,'SibSp']==x['SibSp']:
+                    if df.loc[i,'Name']!=x['Name']:
+                        prob_family.append(df.loc[i,'Name'])
+        if prob_family==[]:
+            if '(' in x['Name']:
+                Sname=x['Name'].split('(')[1].split()[-1][:-1]
+                for i in range(len(df)):
+                    if df.loc[i,'Surname']==Sname:
+                        if df.loc[i,'SibSp']==x['SibSp']:
+                            if df.loc[i,'Title']=='Mr' or df.loc[i,'Title']=='Miss' or df.loc[i,'Title']=='Master':
+                                if df.loc[i,'Name']!=x['Name']:
+                                    prob_family.append(df.loc[i,'Name'])
+                
+            else:
+                for k in range(len(df)):
+                    if '(' in df.loc[i,'Name']:
+                        nam=df.loc[i,'Name'].split('(')[1].split()[-1][:-1]
+                        if x['Surname']==nam:
+                            if df.loc[i,'SibSp']==x['SibSp']:
+                                if df.loc[i,'Title']=='Mr' or df.loc[i,'Title']=='Miss' or df.loc[i,'Title']=='Mrs':
+                                    if df.loc[i,'Name']!=x['Name']:
+                                        prob_family.append(df.loc[i,'Name'])
+                                  
+        return prob_family
+    
+    else:
+        return 0
+                
+                
+                
+df['Siblings']=df.apply(find_parent,axis=1)
+df
+
+
+input_data=df.loc[0:782,['Embarked']]
+
+
+
+outputs=df.loc[0:782,'Survived']
+
+test_data=df.loc[783:,['Embarked']]
+test_out=df.loc[783:,'Survived']
+
+
+type(input_data)
+len(input_data)
+print(input_data.shape)
+
+from keras.layers import Dense,Activation,BatchNormalization
+
+
+initialzer=k.initializers.he_normal(seed=None)
+model=Sequential([Dense(32,input_shape=(1,),kernel_initializer=initialzer),
+  BatchNormalization(axis=-1,epsilon=1e-8,center=True,scale=True,beta_initializer='zeros',
+gamma_initializer='ones'),Activation('relu'),Dense(20,kernel_regularizer=  regularizers.l1(0.005))
+                  ,BatchNormalization(axis=-1,epsilon=1e-8  ,center=True,scale=True,beta_initializer='zeros',
+gamma_initializer='ones'),Activation('relu'),Dense(1),Activation('sigmoid')])
+
+
+sgd = optimizers.Adagrad(lr=0.01, decay=1e-6, epsilon=1e-8)
+model.compile(optimizer=sgd,loss='binary_crossentropy',metrics=['accuracy'])
+
+
+model.fit(input_data,outputs,epochs=20,batch_size=64)
+
+sco=model.evaluate(test_data,test_out)
+print(sco)
